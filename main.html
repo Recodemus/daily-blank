@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily Blank</title>
+    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+    <style>
+        /* -------------------------------------------
+           [공통 스타일 및 초기화]
+        ------------------------------------------- */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Pretendard', 'Noto Sans KR', sans-serif; background-color: #FFFFFF; color: #333333; line-height: 1.6; min-height: 100vh; }
+        
+        .view { display: none; }
+        .view.active { display: flex; flex-direction: column; min-height: 100vh; }
+
+        /* 네비게이션 공통 */
+        header { display: flex; justify-content: space-between; align-items: center; padding: 2rem 5%; width: 100%; }
+        .logo { font-size: 1.25rem; font-weight: 700; cursor: pointer; }
+        nav ul { list-style: none; display: flex; gap: 2rem; }
+        nav a { text-decoration: none; color: #333333; font-weight: 500; cursor: pointer; }
+
+        footer { text-align: center; padding: 2rem; font-size: 0.85rem; color: #999999; margin-top: auto; }
+
+        /* -------------------------------------------
+           [1. 메인 페이지 뷰 스타일]
+        ------------------------------------------- */
+        .hero { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 6rem 2rem; }
+        .topic-label { font-size: 1rem; color: #888888; margin-bottom: 1rem; letter-spacing: 1px; }
+        .daily-topic { font-size: 2.5rem; font-weight: 600; margin-bottom: 3rem; word-break: keep-all; max-width: 800px; }
+
+        .btn-start {
+            padding: 1rem 2.5rem; background-color: #333333; color: #FFFFFF; font-size: 1.1rem;
+            border: none; border-radius: 4px; cursor: pointer; font-family: inherit; transition: background-color 0.3s ease;
+        }
+        .btn-start:hover { background-color: #555555; }
+
+        .preview-section { padding: 4rem 5%; width: 100%; max-width: 1200px; margin: 0 auto; }
+        .preview-grid { display: flex; gap: 2rem; justify-content: center; }
+        .preview-card { flex: 1; padding: 2rem; background-color: #FAFAFA; border-radius: 8px; border: 1px solid #EEEEEE; }
+        .preview-card p { font-size: 0.95rem; color: #555555; line-height: 1.8; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+
+        /* -------------------------------------------
+           [2. 글쓰기 페이지 뷰 스타일]
+        ------------------------------------------- */
+        #writePage { position: relative; overflow: hidden; height: 100vh; }
+        .ui-layer { transition: opacity 0.5s ease-in-out; opacity: 1; }
+        .ui-layer.fade-out { opacity: 0; pointer-events: none; }
+        
+        .top-notice { position: absolute; top: 2rem; left: 0; width: 100%; text-align: center; color: #888888; font-size: 1rem; pointer-events: none; z-index: 10; }
+        
+        .floating-actions { position: absolute; bottom: 3rem; right: 3rem; display: flex; gap: 1rem; z-index: 10; align-items: center; }
+        .btn { padding: 0.8rem 1.5rem; font-size: 1rem; font-family: inherit; border-radius: 4px; cursor: pointer; transition: all 0.3s ease; }
+        .btn-sound { background-color: transparent; color: #888888; border: 1px solid #EEEEEE; }
+        .btn-sound:hover { background-color: #FAFAFA; color: #333333; }
+        .btn-exit { background-color: transparent; color: #555555; border: 1px solid #DDDDDD; }
+        .btn-exit:hover { background-color: #F5F5F5; }
+        .btn-save { background-color: #333333; color: #FFFFFF; border: none; }
+        .btn-save:hover { background-color: #111111; }
+
+        .canvas-container { width: 100vw; height: 100vh; display: flex; justify-content: center; padding: 8rem 5% 0 5%; overflow-y: auto; scroll-behavior: smooth; }
+        #blankCanvas { width: 100%; max-width: 800px; padding-bottom: 50vh; border: none; outline: none; box-shadow: none; resize: none; background-color: transparent; font-family: inherit; font-size: 18px; line-height: 1.7; color: #BBBBBB; transition: color 1.5s ease; }
+        #blankCanvas::placeholder { color: #DDDDDD; }
+        #blankCanvas.ink-settled { color: #333333; }
+
+        /* -------------------------------------------
+           [3. 마이 노트 (아카이브) 뷰 스타일]
+        ------------------------------------------- */
+        .note-header { text-align: center; padding: 4rem 2rem 2rem 2rem; }
+        .note-header h2 { font-size: 2rem; font-weight: 600; margin-bottom: 1rem; }
+        .note-header p { color: #888888; }
+
+        .note-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 1.5rem;
+            padding: 2rem 5%;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .note-tile {
+            aspect-ratio: 1;
+            background-color: #FAFAFA;
+            border: 1px solid #EEEEEE;
+            border-radius: 4px;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .note-tile:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+            border-color: #DDDDDD;
+        }
+
+        .tile-date { font-size: 0.85rem; color: #888888; margin-bottom: 1rem; border-bottom: 1px solid #EEEEEE; padding-bottom: 0.5rem; }
+        .tile-content { font-size: 0.95rem; color: #333333; line-height: 1.7; display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; }
+        
+        .empty-note { text-align: center; color: #888888; padding: 4rem; grid-column: 1 / -1; }
+    </style>
+</head>
+<body>
+
+    <header id="mainHeader">
+        <div class="logo" onclick="navigateTo('main')">Daily Blank</div>
+        <nav>
+            <ul>
+                <li><a href="#">Read</a></li>
+                <li><a onclick="navigateTo('write')">Write</a></li>
+                <li><a onclick="navigateTo('note')">My Note</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <div id="mainPage" class="view active">
+        <main class="hero">
+            <div class="topic-label">오늘의 글감</div>
+            <h1 class="daily-topic">"당신이 가장 좋아하는 새벽의 소리는 무엇인가요?"</h1>
+            <button class="btn-start" onclick="navigateTo('write')">오늘의 캔버스 열기</button>
+        </main>
+        <section class="preview-section">
+            <div class="preview-grid">
+                <div class="preview-card"><p>새벽 4시, 어스름한 골목길을 달리는 신문 배달 오토바이의 엔진 소리는 나의 하루를 깨우는 가장 익숙하고 반가운 백색소음이다...</p></div>
+                <div class="preview-card"><p>모두가 잠든 시간, 고요한 거실에서 규칙적으로 낮게 웅웅거리는 냉장고 소리만이 공간을 채운다...</p></div>
+                <div class="preview-card"><p>비가 내리는 새벽의 빗소리를 유독 좋아한다. 차분하게 가라앉은 공기 속에서 타닥타닥 창문을 두드리는 소리에...</p></div>
+            </div>
+        </section>
+        <footer>&copy; Daily Blank. All rights reserved.</footer>
+    </div>
+
+
+    <div id="writePage" class="view">
+        <div class="ui-layer" id="uiLayer">
+            <div class="top-notice">오늘의 글감: 당신이 가장 좋아하는 새벽의 소리는 무엇인가요?</div>
+            <div class="floating-actions">
+                <button class="btn btn-sound" id="soundBtn" onclick="toggleSound()">비 내리는 소리 켜기</button>
+                <button class="btn btn-exit" onclick="navigateTo('main')">나가기</button>
+                <button class="btn btn-save" onclick="saveContent()">저장</button>
+            </div>
+        </div>
+        <div class="canvas-container" id="canvasContainer">
+            <textarea id="blankCanvas" placeholder="내용을 입력하세요..." oninput="resizeTextarea(this)"></textarea>
+        </div>
+    </div>
+
+
+    <div id="notePage" class="view">
+        <div class="note-header">
+            <h2>My Note</h2>
+            <p>조용히 쌓여가는 당신의 기록들</p>
+        </div>
+        <div class="note-grid" id="noteGrid"></div>
+        <footer>&copy; Daily Blank. All rights reserved.</footer>
+    </div>
+
+
+    <script>
+        const uiLayer = document.getElementById('uiLayer');
+        const blankCanvas = document.getElementById('blankCanvas');
+        const mainHeader = document.getElementById('mainHeader');
+        let zenModeTimeout;
+        const GOAL_LENGTH = 100; 
+
+        // 오디오 로직 (구글 Actions 공식 사운드 라이브러리 링크로 교체 - 안정성 매우 높음)
+        const ambientSound = new Audio('./rain.mp3');
+        ambientSound.loop = true;
+        let isSoundPlaying = false;
+
+        function toggleSound() {
+            const soundBtn = document.getElementById('soundBtn');
+            if (isSoundPlaying) {
+                ambientSound.pause();
+                soundBtn.innerText = '비 내리는 소리 켜기';
+                soundBtn.style.color = '#888888';
+                isSoundPlaying = false;
+            } else {
+                ambientSound.play().catch(e => {
+                    console.error("오디오 재생 실패 (브라우저 정책 혹은 네트워크 문제):", e);
+                    alert("음원을 불러올 수 없습니다. 크롬(Chrome) 브라우저를 사용 중이시거나, 로컬 파일(file://) 환경이라면 Live Server 확장을 통해 실행해 주세요.");
+                });
+                soundBtn.innerText = '비 내리는 소리 끄기';
+                soundBtn.style.color = '#333333';
+                isSoundPlaying = true;
+            }
+        }
+
+        // 1. 화면 전환 네비게이션 함수
+        function navigateTo(viewName) {
+            document.getElementById('mainPage').classList.remove('active');
+            document.getElementById('writePage').classList.remove('active');
+            document.getElementById('notePage').classList.remove('active');
+            
+            // 글쓰기 모드가 아닐 때는 항상 헤더를 노출
+            mainHeader.style.display = viewName === 'write' ? 'none' : 'flex';
+
+            if (viewName === 'main') {
+                document.getElementById('mainPage').classList.add('active');
+                document.body.style.overflow = 'auto'; 
+                if (isSoundPlaying) toggleSound();
+            } else if (viewName === 'write') {
+                document.getElementById('writePage').classList.add('active');
+                document.body.style.overflow = 'hidden'; 
+                blankCanvas.focus();
+                if (blankCanvas.value.trim().length > 0) {
+                    resetZenTimer();
+                    checkInkSettling(); 
+                }
+            } else if (viewName === 'note') {
+                document.getElementById('notePage').classList.add('active');
+                document.body.style.overflow = 'auto';
+                if (isSoundPlaying) toggleSound();
+                renderNotes(); // 노트 페이지 진입 시 데이터 렌더링
+            }
+        }
+
+        // 백지 모드(Zen Mode) 로직
+        function hideUI() { uiLayer.classList.add('fade-out'); }
+        function showUI() { uiLayer.classList.remove('fade-out'); }
+        function resetZenTimer() { clearTimeout(zenModeTimeout); zenModeTimeout = setTimeout(hideUI, 3000); }
+
+        function checkInkSettling() {
+            if (blankCanvas.value.length >= GOAL_LENGTH) {
+                blankCanvas.classList.add('ink-settled');
+            } else {
+                blankCanvas.classList.remove('ink-settled');
+            }
+        }
+
+        function resizeTextarea(el) {
+            el.style.height = 'auto';
+            el.style.height = (el.scrollHeight) + 'px';
+        }
+
+        blankCanvas.addEventListener('input', () => { resetZenTimer(); checkInkSettling(); });
+        document.addEventListener('mousemove', () => {
+            if (document.getElementById('writePage').classList.contains('active')) {
+                showUI();
+                if (document.activeElement === blankCanvas) resetZenTimer();
+            }
+        });
+
+        // -------------------------------------------
+        // [추가된 데이터 저장 및 불러오기 로직]
+        // -------------------------------------------
+        function saveContent() {
+            const content = blankCanvas.value.trim();
+            if (!content) {
+                alert("작성된 내용이 없습니다.");
+                return;
+            }
+
+            // 날짜 생성 (YYYY.MM.DD 형식)
+            const today = new Date();
+            const dateString = `${today.getFullYear()}.${String(today.getMonth() + 1).padStart(2, '0')}.${String(today.getDate()).padStart(2, '0')}`;
+
+            // 새로운 노트 객체 생성
+            const newNote = {
+                id: Date.now(),
+                date: dateString,
+                text: content
+            };
+
+            // 기존 데이터 불러오기
+            let savedNotes = JSON.parse(localStorage.getItem('dailyBlankNotes')) || [];
+            
+            // 새 데이터 배열 앞에 추가 후 저장
+            savedNotes.unshift(newNote);
+            localStorage.setItem('dailyBlankNotes', JSON.stringify(savedNotes));
+
+            alert("글이 안전하게 아카이브에 저장되었습니다.");
+            
+            // 저장 후 입력창 초기화 및 마이 노트로 이동
+            blankCanvas.value = '';
+            blankCanvas.style.height = 'auto';
+            checkInkSettling();
+            navigateTo('note');
+        }
+
+        function renderNotes() {
+            const grid = document.getElementById('noteGrid');
+            const savedNotes = JSON.parse(localStorage.getItem('dailyBlankNotes')) || [];
+
+            // 그리드 초기화
+            grid.innerHTML = '';
+
+            if (savedNotes.length === 0) {
+                grid.innerHTML = '<div class="empty-note">아직 작성된 에세이가 없습니다.<br>오늘의 첫 문장을 적어보세요.</div>';
+                return;
+            }
+
+            // 타일 생성 및 추가
+            savedNotes.forEach(note => {
+                const tile = document.createElement('div');
+                tile.className = 'note-tile';
+                tile.innerHTML = `
+                    <div class="tile-date">${note.date}</div>
+                    <div class="tile-content">${note.text}</div>
+                `;
+                grid.appendChild(tile);
+            });
+        }
+    </script>
+</body>
+</html>
